@@ -1,6 +1,6 @@
-# MIO 轨道记忆 (Memories in Orbit) - 传送 Mod
+# 秘奥 秘宇奥忆 (MIO: Memories in Orbit) - 传送 Mod
 
-这是一个为游戏《MIO: Memories in Orbit》(进程名 `mio.exe`) 开发的内置传送工具。本项目基于 DirectX 12 Hook (ImGui + Kiero) 实现，通过读写游戏内存坐标，支持玩家进行坐标记录、备注、管理和瞬移。
+这是一个为游戏《MIO: Memories in Orbit》 开发的内置传送工具。本项目基于 DirectX 12 Hook (ImGui + Kiero) 实现，通过读写游戏内存坐标，支持玩家进行坐标记录、备注、管理和瞬移。
 
 ## ✨ 功能特性
 
