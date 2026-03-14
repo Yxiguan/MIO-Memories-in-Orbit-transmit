@@ -1,12 +1,3 @@
-include(FetchContent)
-
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.7
-)
-FetchContent_MakeAvailable(imgui)
-
 set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
@@ -38,6 +29,9 @@ add_library(${DLL_NAME} SHARED
     ${CMAKE_SOURCE_DIR}/vendor/kiero/kiero.cpp
     src/hooks/d3d12hook.cpp
     src/dev/Console.cpp
+    src/game/Memory.cpp
+    src/features/Cheats.cpp
+    src/ui/Menu.cpp
 )
 
 set_output_directories(${DLL_NAME})

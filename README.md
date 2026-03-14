@@ -1,46 +1,39 @@
 # 秘奥 秘宇奥忆 (MIO: Memories in Orbit) - 传送 Mod
 
-这是一个为游戏《MIO: Memories in Orbit》 开发的内置传送工具。本项目基于 DirectX 12 Hook (ImGui + Kiero) 实现，通过读写游戏内存坐标，支持玩家进行坐标记录、备注、管理和瞬移。
+这是一个为游戏《MIO: Memories in Orbit》 开发的内置传送工具。本项目基于 DirectX 12 Hook (ImGui + Kiero) 实现。
 
 ## ✨ 功能特性
 
-- **内置中文菜单**：使用 ImGui 并在内部加载了微软雅黑字体(`msyh.ttc`)，完全支持中文字符的显示和备注输入。
-- **实时坐标显示**：在菜单中实时获取并显示角色当前的 `X` 和 `Y` 坐标（内存基址 `0x10EFF48`，偏移 `0x18/0x1C`），并提示当前内存坐标的读取状态。
-- **坐标记录与备注**：玩家可以将当前所在位置保存到列表中，并为每个位置添加自定义文本备注（例如：Boss房间、隐藏宝箱等）。
-- **一键瞬移**：选择列表中的任意坐标，即可瞬间将角色传送到选中位置。
-- **数据持久化**：所有保存的坐标及备注会自动存储至游戏目录下的 `TeleportLocations.txt` 文件，下次启动游戏自动读取。
-- **坐标管理**：可以在菜单内随时删除不再需要的坐标记录。
+- **现代化深色 UI**：重构了基于 ImGui 的内置菜单，采用深色渐变与圆角设计，支持中文显示（微软雅黑）。
+- **坐标管理系统**：
+  - 实时显示角色坐标（支持读取状态实时反馈）。
+  - 支持坐标保存、备注编辑及数据持久化（`TeleportLocations.txt`）。
+  - 一键传送到选中位置。
+- **高级修改器**：
+  - **飞行模式**：支持 WASD 空中移动及 Shift 加速。
+  - **能量锁定**：自动将能量锁定在 100%。
 
 ## 🎮 快捷键说明
 
-- **`F7`** : 唤出 / 隐藏内置传送菜单。
+- **`F7`** : 开启 / 关闭主菜单。
 - **`F6`** : 快速传送到当前列表中选定的位置。
+- **`F9`** : 卸载并清理 DLL。
+
+## 🏗️ 项目架构 (重构版)
+
+项目采用了模块化解耦设计，职责分明：
+
+- **`dll/src/game`**: 封装底层内存读写逻辑与地址偏移。
+- **`dll/src/features`**: 实现核心功能逻辑（传送、飞行、热键）。
+- **`dll/src/ui`**: 现代样式的界面渲染逻辑。
+- **`dll/src/hooks`**: 纯粹的 D3D12 API 钩子管理。
 
 ## 🛠️ 编译与构建
 
-本项目基于 CMake 进行构建。
-
-### 环境要求
-
-- Windows 10/11
-- Visual Studio 2019/2022 (或 VSCode)
-- [DirectX SDK](https://www.microsoft.com/en-us/download/details.aspx?id=6812)
-- CMake 3.15 或更高版本
-- Git
-
-### 构建步骤 (以命令行编译为例)
-
-1. 克隆本仓库（请确保拉取子模块）：
-   ```bash
-   git clone --recurse-submodules [你的仓库地址]
-   cd MIO-Memories-in-Orbit-transmit
+1. **环境**: Windows 10/11, VS 2022, CMake 3.24+。
+2. **构建**:
+   ```ps1
+   cmake -B out -S .
+   cmake --build out --config Release
    ```
-
-2. 使用 CMake Preset 构建系统（以 VS2022 Release 为例）：
-   ```bash
-   cmake --preset windows-x64-release-2022
-   cmake --build --preset windows-x64-release-2022
-   ```
-
-编译完成后，DLL 文件将生成在 `bin/Release` 目录下。直接将其 DLL 注入到 `mio.exe` 进程即可使用此 Mod。
-
+   编译后的 `MIO-Memories-in-Orbit-transmit-ImGui.dll` 将生成于 `.bin/Release` 目录。

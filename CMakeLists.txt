@@ -9,8 +9,8 @@ set(OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/.bin")
 include(cmake/common.cmake)
 include(cmake/dependencies.cmake)
 
-add_subdirectory(app)
 add_subdirectory(dll)
+add_subdirectory(app)
 
 if(BUILD_INSTALLER)
     include(cmake/install.cmake)

@@ -63,33 +63,8 @@ static HANDLE g_hSwapChainWaitableObject = nullptr;
 // static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {}; // Original
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 
-struct TeleportEntry
-{
-    float x = 0.0f;
-    float y = 0.0f;
-    std::string note;
-};
-
-struct TeleportState
-{
-    bool menu_open = true;
-    float current_x = 0.0f;
-    float current_y = 0.0f;
-    bool last_read_ok = false;
-    std::vector<TeleportEntry> entries;
-    int selected_index = -1;
-    bool loaded = false;
-    char pending_note[128] = {};
-};
-
-static TeleportState g_teleport;
-
-constexpr std::uintptr_t kBaseAddress = 0x10EFF48;
-constexpr std::uintptr_t kOffsetX = 0x18;
-constexpr std::uintptr_t kOffsetY = 0x1C;
-constexpr const char *kGameModuleName = "mio.exe";
-
-constexpr const char *kTeleportFileName = "TeleportLocations.txt";
+#include <features/Cheats.h>
+#include <ui/Menu.h>
 
 void CreateRenderTarget()
 {
@@ -157,246 +132,6 @@ void WaitForLastSubmittedFrame()
 
     g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
     WaitForSingleObject(g_fenceEvent, INFINITE);
-}
-
-static std::string GetTeleportFilePath()
-{
-    char module_path[MAX_PATH] = {};
-    DWORD len = GetModuleFileNameA(nullptr, module_path, MAX_PATH);
-    if (len == 0 || len == MAX_PATH)
-        return std::string(kTeleportFileName);
-
-    std::string path(module_path);
-    auto pos = path.find_last_of("\\/");
-    if (pos == std::string::npos)
-        return std::string(kTeleportFileName);
-
-    return path.substr(0, pos + 1) + kTeleportFileName;
-}
-
-static void LoadTeleportEntries()
-{
-    if (g_teleport.loaded)
-        return;
-
-    g_teleport.loaded = true;
-    g_teleport.entries.clear();
-    g_teleport.selected_index = -1;
-
-    std::ifstream file(GetTeleportFilePath());
-    if (!file.is_open())
-        return;
-
-    std::string line;
-    while (std::getline(file, line))
-    {
-        if (line.empty())
-            continue;
-
-        std::istringstream iss(line);
-        TeleportEntry entry;
-        if (!(iss >> entry.x >> entry.y))
-            continue;
-
-        std::string remaining;
-        if (std::getline(iss, remaining))
-        {
-            auto pos = remaining.find_first_not_of(' ');
-            if (pos != std::string::npos)
-                entry.note = remaining.substr(pos);
-        }
-
-        g_teleport.entries.push_back(entry);
-    }
-
-    if (!g_teleport.entries.empty())
-        g_teleport.selected_index = 0;
-}
-
-static void SaveTeleportEntries()
-{
-    std::ofstream file(GetTeleportFilePath(), std::ios::trunc);
-    if (!file.is_open())
-        return;
-
-    for (const auto &entry : g_teleport.entries)
-    {
-        file << entry.x << ' ' << entry.y;
-        if (!entry.note.empty())
-            file << ' ' << entry.note;
-        file << '\n';
-    }
-}
-
-static bool ResolveAxisBase(std::uintptr_t &out_base)
-{
-    HMODULE module = GetModuleHandleA(kGameModuleName);
-    if (!module)
-        return false;
-
-    auto base_ptr = reinterpret_cast<std::uint8_t *>(module);
-    auto pointer_addr = reinterpret_cast<std::uintptr_t *>(base_ptr + kBaseAddress);
-
-    __try
-    {
-        out_base = *pointer_addr;
-        return out_base != 0;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        return false;
-    }
-}
-
-static float *GetAxisPtr(std::uintptr_t offset)
-{
-    std::uintptr_t resolved_base = 0;
-    if (!ResolveAxisBase(resolved_base))
-        return nullptr;
-
-    auto base_ptr = reinterpret_cast<std::uint8_t *>(resolved_base);
-    return reinterpret_cast<float *>(base_ptr + offset);
-}
-
-static bool ReadAxes(float &out_x, float &out_y)
-{
-    auto x_ptr = GetAxisPtr(kOffsetX);
-    auto y_ptr = GetAxisPtr(kOffsetY);
-
-    if (!x_ptr || !y_ptr)
-        return false;
-
-    __try
-    {
-        out_x = *x_ptr;
-        out_y = *y_ptr;
-        return true;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        return false;
-    }
-}
-
-static bool WriteAxes(float x, float y)
-{
-    auto x_ptr = GetAxisPtr(kOffsetX);
-    auto y_ptr = GetAxisPtr(kOffsetY);
-
-    if (!x_ptr || !y_ptr)
-        return false;
-
-    __try
-    {
-        *x_ptr = x;
-        *y_ptr = y;
-        return true;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        return false;
-    }
-}
-
-static void UpdateTeleportState()
-{
-    LoadTeleportEntries();
-    g_teleport.last_read_ok = ReadAxes(g_teleport.current_x, g_teleport.current_y);
-}
-
-static void AddTeleportEntry()
-{
-    if (!g_teleport.last_read_ok)
-        return;
-
-    TeleportEntry entry;
-    entry.x = g_teleport.current_x;
-    entry.y = g_teleport.current_y;
-    entry.note = g_teleport.pending_note;
-    g_teleport.entries.push_back(entry);
-    g_teleport.selected_index = static_cast<int>(g_teleport.entries.size()) - 1;
-    g_teleport.pending_note[0] = '\0';
-    SaveTeleportEntries();
-}
-
-static void DeleteSelectedEntry()
-{
-    if (g_teleport.selected_index < 0 || g_teleport.selected_index >= static_cast<int>(g_teleport.entries.size()))
-        return;
-
-    g_teleport.entries.erase(g_teleport.entries.begin() + g_teleport.selected_index);
-
-    if (g_teleport.entries.empty())
-        g_teleport.selected_index = -1;
-    else if (g_teleport.selected_index >= static_cast<int>(g_teleport.entries.size()))
-        g_teleport.selected_index = static_cast<int>(g_teleport.entries.size()) - 1;
-
-    SaveTeleportEntries();
-}
-
-static void TeleportToSelected()
-{
-    if (g_teleport.selected_index < 0 || g_teleport.selected_index >= static_cast<int>(g_teleport.entries.size()))
-        return;
-
-    const auto &entry = g_teleport.entries[g_teleport.selected_index];
-    WriteAxes(entry.x, entry.y);
-}
-
-static void DrawTeleportMenu()
-{
-    if (!g_teleport.menu_open)
-        return;
-
-    ImGui::Begin("Teleport", &g_teleport.menu_open);
-    ImGui::Text("当前坐标: X=%.3f  Y=%.3f", g_teleport.current_x, g_teleport.current_y);
-    ImGui::Text("读取状态: %s", g_teleport.last_read_ok ? "正常" : "失败");
-
-    ImGui::InputText("备注", g_teleport.pending_note, sizeof(g_teleport.pending_note));
-
-    if (ImGui::Button("保存当前坐标"))
-        AddTeleportEntry();
-
-    ImGui::SameLine();
-    if (ImGui::Button("传送到选中"))
-        TeleportToSelected();
-
-    ImGui::SameLine();
-    if (ImGui::Button("删除选中"))
-        DeleteSelectedEntry();
-
-    ImGui::Text("F6 传送选中 | F7 显示或隐藏菜单");
-
-    if (ImGui::BeginListBox("坐标列表", ImVec2(-FLT_MIN, 200.0f)))
-    {
-        for (int i = 0; i < static_cast<int>(g_teleport.entries.size()); ++i)
-        {
-            const auto &entry = g_teleport.entries[i];
-            char label[192] = {};
-            if (!entry.note.empty())
-                sprintf_s(label, "[%d] X=%.3f Y=%.3f (%s)", i + 1, entry.x, entry.y, entry.note.c_str());
-            else
-                sprintf_s(label, "[%d] X=%.3f Y=%.3f", i + 1, entry.x, entry.y);
-            const bool selected = (g_teleport.selected_index == i);
-            if (ImGui::Selectable(label, selected))
-                g_teleport.selected_index = i;
-
-            if (selected)
-                ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndListBox();
-    }
-
-    ImGui::End();
-}
-
-static void HandleHotkeys()
-{
-    if (GetAsyncKeyState(VK_F6) & 1)
-        TeleportToSelected();
-
-    if (GetAsyncKeyState(VK_F7) & 1)
-        g_teleport.menu_open = !g_teleport.menu_open;
 }
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -542,17 +277,17 @@ HRESULT __fastcall hkPresent(IDXGISwapChain3 *pSwapChain, UINT SyncInterval, UIN
     }
 
     // Обработка переключения окна
-    UpdateTeleportState();
-    HandleHotkeys();
+    Features::UpdateTeleportState();
+    Features::HandleHotkeys();
 
     // 开始新帧
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::GetIO().MouseDrawCursor = g_teleport.menu_open;
+    ImGui::GetIO().MouseDrawCursor = Features::g_teleport.menu_open;
 
-    DrawTeleportMenu();
+    UI::DrawTeleportMenu();
 
     // Получаем текущий back buffer
     UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
