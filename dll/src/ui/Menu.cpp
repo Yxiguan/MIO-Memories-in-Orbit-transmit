@@ -39,9 +39,9 @@ namespace UI {
                 ImGui::Text("坐标状态:"); 
                 ImGui::NextColumn();
                 if (Features::g_teleport.last_read_ok)
-                    ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "● 正常 (%.1f, %.1f)", Features::g_teleport.current_x, Features::g_teleport.current_y);
+                    ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "正常 (%.1f, %.1f)", Features::g_teleport.current_x, Features::g_teleport.current_y);
                 else
-                    ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "○ 失败");
+                    ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "失败");
                 
                 ImGui::NextColumn();
                 ImGui::Text("能量数值:");
@@ -57,7 +57,7 @@ namespace UI {
 
             // --- 核心修改器 ---
             if (ImGui::CollapsingHeader("核心修改器", ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (ImGui::Checkbox("锁定能量 (100%)", &Features::g_energy.lock_enabled)) {
+                if (ImGui::Checkbox("去除能量消耗", &Features::g_energy.lock_enabled)) {
                     // Feedback or sound could go here
                 }
                 

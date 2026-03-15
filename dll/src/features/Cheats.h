@@ -1,6 +1,8 @@
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
+#include <game/Offsets.h>
 
 struct TeleportEntry
 {
@@ -26,6 +28,10 @@ struct EnergyState
     bool lock_enabled = false;
     float current_value = 0.0f;
     bool last_read_ok = false;
+    bool patch_applied = false;
+    std::uint8_t original_bytes[Game::kEnergyPatchSize] = {};
+    bool patch_applied_alt = false;
+    std::uint8_t original_bytes_alt[Game::kEnergyPatchSize] = {};
 };
 
 struct FlyState

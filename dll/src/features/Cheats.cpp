@@ -5,11 +5,55 @@
 #include <windows.h>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 namespace Features {
     TeleportState g_teleport;
     EnergyState g_energy;
     FlyState g_fly;
+
+    static bool ApplyEnergyPatchAt(std::uintptr_t offset, std::uint8_t *original_bytes, bool &applied, bool enable)
+    {
+        HMODULE module = GetModuleHandleA(Game::kGameModuleName);
+        if (!module)
+            return false;
+
+        auto base_ptr = reinterpret_cast<std::uint8_t *>(module);
+        auto patch_ptr = base_ptr + offset;
+
+        DWORD old_protect = 0;
+        if (!VirtualProtect(patch_ptr, Game::kEnergyPatchSize, PAGE_EXECUTE_READWRITE, &old_protect))
+            return false;
+
+        if (enable)
+        {
+            if (!applied)
+                std::memcpy(original_bytes, patch_ptr, Game::kEnergyPatchSize);
+
+            std::memset(patch_ptr, 0x90, Game::kEnergyPatchSize);
+            applied = true;
+        }
+        else
+        {
+            if (applied)
+            {
+                std::memcpy(patch_ptr, original_bytes, Game::kEnergyPatchSize);
+                applied = false;
+            }
+        }
+
+        DWORD temp = 0;
+        VirtualProtect(patch_ptr, Game::kEnergyPatchSize, old_protect, &temp);
+        FlushInstructionCache(GetCurrentProcess(), patch_ptr, Game::kEnergyPatchSize);
+        return true;
+    }
+
+    static bool ApplyEnergyPatch(bool enable)
+    {
+        bool primary_ok = ApplyEnergyPatchAt(Game::kEnergyPatchOffset, g_energy.original_bytes, g_energy.patch_applied, enable);
+        bool secondary_ok = ApplyEnergyPatchAt(Game::kEnergyPatchOffsetAlt, g_energy.original_bytes_alt, g_energy.patch_applied_alt, enable);
+        return primary_ok && secondary_ok;
+    }
 
     static std::string GetTeleportFilePath()
     {
@@ -123,7 +167,14 @@ namespace Features {
         g_energy.last_read_ok = Game::ReadEnergy(g_energy.current_value);
 
         if (g_energy.lock_enabled)
-            Game::WriteEnergy(Game::kEnergyLockValue);
+        {
+            if (!g_energy.patch_applied || !g_energy.patch_applied_alt)
+                ApplyEnergyPatch(true);
+        }
+        else if (g_energy.patch_applied || g_energy.patch_applied_alt)
+        {
+            ApplyEnergyPatch(false);
+        }
 
         UpdateFlyMovement();
     }

@@ -9,4 +9,7 @@ namespace Game {
     constexpr float kEnergyLockValue = 100.0f;
     constexpr const char *kGameModuleName = "mio.exe";
     constexpr const char *kTeleportFileName = "TeleportLocations.txt";
+    constexpr std::uintptr_t kEnergyPatchOffset = 0x9CF739;
+    constexpr std::uintptr_t kEnergyPatchOffsetAlt = 0x9DD39B;
+    constexpr std::size_t kEnergyPatchSize = 8;
 }
